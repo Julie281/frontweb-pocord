@@ -16,16 +16,27 @@
     </header>
 
     <section class="upload-card card">
-      <div class="upload-left">
-        <h2>Subir grabación</h2>
-        <p>Sube un audio para generar transcript, resumen y tareas.</p>
-      </div>
+  <div class="upload-left">
+    <h2>Subir grabación</h2>
+    <p>Sube un audio para generar transcript, resumen y tareas.</p>
+  </div>
 
-      <div class="upload-right">
-        <input type="file" id="fileInput" />
-        <button class="primary-btn" onclick="upload()">Subir audio</button>
-      </div>
-    </section>
+  <div class="upload-right">
+    <input type="file" id="fileInput" class="hidden-file-input" onchange="handleFileChange()" />
+
+    <button class="ghost-btn" onclick="triggerFileSelect()">
+      Seleccionar archivo
+    </button>
+
+    <span id="selectedFileName" class="file-name">
+      Ningún archivo seleccionado
+    </span>
+
+    <button class="primary-btn" onclick="upload()">
+      Subir audio
+    </button>
+  </div>
+</section>
 
     <div id="statusBanner" class="status-banner hidden"></div>
 

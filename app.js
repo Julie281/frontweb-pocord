@@ -19,6 +19,7 @@ function hideStatus() {
 }
 
 async function upload() {
+document.getElementById("selectedFileName").textContent = "Ningún archivo seleccionado";
   const input = document.getElementById("fileInput");
   const file = input.files[0];
 
@@ -199,3 +200,18 @@ function escapeHtml(text) {
 
 loadMeetings();
 loadTasks();
+
+function triggerFileSelect() {
+  document.getElementById("fileInput").click();
+}
+
+function handleFileChange() {
+  const input = document.getElementById("fileInput");
+  const label = document.getElementById("selectedFileName");
+
+  if (input.files && input.files.length > 0) {
+    label.textContent = input.files[0].name;
+  } else {
+    label.textContent = "Ningún archivo seleccionado";
+  }
+}
