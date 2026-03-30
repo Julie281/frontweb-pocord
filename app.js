@@ -1,4 +1,4 @@
-const API = "https://pocord-production.up.railway.app/";
+const API = "https://pocord-production.up.railway.app";
 let currentMeeting = null;
 function showStatus(message, type = "info") {
   const banner = document.getElementById("statusBanner");
