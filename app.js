@@ -1,4 +1,5 @@
 const API = "https://pocord-production.up.railway.app/";
+let currentMeeting = null;
 function showStatus(message, type = "info") {
   const banner = document.getElementById("statusBanner");
   banner.classList.remove("hidden");
@@ -103,6 +104,7 @@ async function openMeeting(id) {
       throw new Error(meeting.error || "No se pudo cargar la reunión");
     }
 
+    currentMeeting = meeting;
     const topics = (meeting.topics || [])
       .map((topic) => `<li>${escapeHtml(topic)}</li>`)
       .join("");
@@ -213,5 +215,49 @@ function handleFileChange() {
     label.textContent = input.files[0].name;
   } else {
     label.textContent = "Ningún archivo seleccionado";
+  }
+}
+
+async function copyMeetingDetail() {
+  if (!currentMeeting) {
+    showStatus("Primero selecciona una reunión.", "error");
+    return;
+  }
+
+  const summary = currentMeeting.summary || "Sin resumen";
+  const topics = (currentMeeting.topics || []).length
+    ? currentMeeting.topics.map((t) => `- ${t}`).join("\n")
+    : "- Sin temas";
+
+  const tasks = (currentMeeting.tasks || []).length
+    ? currentMeeting.tasks
+        .map((t) => {
+          const owner = t.owner || "sin asignar";
+          const priority = t.priority ? ` [${t.priority}]` : "";
+          return `- ${t.task} — ${owner}${priority}`;
+        })
+        .join("\n")
+    : "- Sin tareas";
+
+  const transcript = currentMeeting.transcript || "Sin transcript";
+
+  const text = `RESUMEN
+${summary}
+
+TEMAS
+${topics}
+
+TAREAS
+${tasks}
+
+TRANSCRIPT
+${transcript}`;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showStatus("Detalle copiado al portapapeles.", "success");
+  } catch (err) {
+    console.error(err);
+    showStatus("No se pudo copiar el detalle.", "error");
   }
 }
