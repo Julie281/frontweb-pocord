@@ -1,30 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Meeting AI</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>Meeting AI</h1>
+        <p class="subtitle">Graba, analiza y convierte reuniones en tareas</p>
+      </div>
+    </header>
 
-<h1>📊 Meeting AI</h1>
+    <section class="upload-card card">
+      <div class="upload-left">
+        <h2>Subir grabación</h2>
+        <p>Sube un audio para generar transcript, resumen y tareas.</p>
+      </div>
 
-<!-- UPLOAD -->
-<input type="file" id="fileInput">
-<button onclick="upload()">Subir audio</button>
+      <div class="upload-right">
+        <input type="file" id="fileInput" />
+        <button class="primary-btn" onclick="upload()">Subir audio</button>
+      </div>
+    </section>
 
-<hr>
+    <div id="statusBanner" class="status-banner hidden"></div>
 
-<!-- MEETINGS -->
-<h2>Reuniones</h2>
-<div id="meetings"></div>
+    <main class="content-grid">
+      <section class="card panel">
+        <div class="panel-header">
+          <h2>Reuniones</h2>
+          <button class="ghost-btn" onclick="loadMeetings()">Actualizar</button>
+        </div>
+        <div id="meetings" class="list-container"></div>
+      </section>
 
-<hr>
+      <section class="card panel">
+        <div class="panel-header">
+          <h2>Tareas</h2>
+          <button class="ghost-btn" onclick="loadTasks()">Actualizar</button>
+        </div>
+        <div id="tasks" class="list-container"></div>
+      </section>
+    </main>
 
-<!-- TASKS -->
-<h2>Tareas</h2>
-<div id="tasks"></div>
+    <section class="card detail-card">
+      <div class="panel-header">
+        <h2>Detalle de reunión</h2>
+      </div>
+      <div id="meetingDetail" class="detail-empty">
+        Selecciona una reunión para ver su resumen, transcript y tareas.
+      </div>
+    </section>
+  </div>
 
-<script src="app.js"></script>
-
+  <script src="app.js"></script>
 </body>
 </html>

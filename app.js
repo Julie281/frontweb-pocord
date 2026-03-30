@@ -1,82 +1,201 @@
 const API = "https://pocord-production.up.railway.app/";
+function showStatus(message, type = "info") {
+  const banner = document.getElementById("statusBanner");
+  banner.classList.remove("hidden");
+  banner.textContent = message;
 
-// -------------------
-// UPLOAD AUDIO
-// -------------------
+  if (type === "error") {
+    banner.style.borderColor = "#d64545";
+  } else if (type === "success") {
+    banner.style.borderColor = "#1f9d55";
+  } else {
+    banner.style.borderColor = "#2a3040";
+  }
+}
+
+function hideStatus() {
+  const banner = document.getElementById("statusBanner");
+  banner.classList.add("hidden");
+}
+
 async function upload() {
-  const file = document.getElementById("fileInput").files[0];
+  const input = document.getElementById("fileInput");
+  const file = input.files[0];
+
+  if (!file) {
+    showStatus("Selecciona un archivo antes de subirlo.", "error");
+    return;
+  }
 
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API}/upload`, {
-    method: "POST",
-    body: formData
-  });
+  try {
+    showStatus("Subiendo y procesando audio...", "info");
 
-  const data = await res.json();
-  alert("Meeting ID: " + data.id);
+    const res = await fetch(`${API}/upload`, {
+      method: "POST",
+      body: formData
+    });
 
-  loadMeetings();
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(data.error || "No se pudo subir el audio");
+    }
+
+    showStatus(`Reunión creada correctamente. ID: ${data.id}`, "success");
+    input.value = "";
+
+    await loadMeetings();
+    await loadTasks();
+    await openMeeting(data.id);
+  } catch (err) {
+    console.error(err);
+    showStatus(`Error: ${err.message}`, "error");
+  }
 }
 
-// -------------------
-// LOAD MEETINGS
-// -------------------
 async function loadMeetings() {
-  const res = await fetch(`${API}/search?query=`);
-  const meetings = await res.json();
-
   const container = document.getElementById("meetings");
-  container.innerHTML = "";
+  container.innerHTML = `<div class="empty-state">Cargando reuniones...</div>`;
 
-  meetings.forEach(m => {
-    const div = document.createElement("div");
+  try {
+    const res = await fetch(`${API}/search?query=`);
+    const meetings = await res.json();
 
-    div.innerHTML = `
-      <b>${m.summary || "Sin resumen"}</b>
-      <button onclick="openMeeting('${m.id}')">Ver</button>
-    `;
+    container.innerHTML = "";
 
-    container.appendChild(div);
-  });
+    if (!meetings.length) {
+      container.innerHTML = `<div class="empty-state">Todavía no hay reuniones.</div>`;
+      return;
+    }
+
+    meetings.forEach((m) => {
+      const div = document.createElement("div");
+      div.className = "meeting-item";
+      div.onclick = () => openMeeting(m.id);
+
+      div.innerHTML = `
+        <div class="item-title">${escapeHtml(m.summary || "Sin resumen")}</div>
+        <div class="item-subtitle">ID: ${m.id}</div>
+        <div class="badge">Ver detalle</div>
+      `;
+
+      container.appendChild(div);
+    });
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<div class="empty-state">No se pudieron cargar las reuniones.</div>`;
+  }
 }
 
-// -------------------
-// OPEN MEETING
-// -------------------
 async function openMeeting(id) {
-  const res = await fetch(`${API}/meeting/${id}`);
-  const m = await res.json();
+  const container = document.getElementById("meetingDetail");
+  container.innerHTML = `<div class="empty-state">Cargando detalle...</div>`;
 
-  alert(
-    "Resumen:\n" + m.summary +
-    "\n\nTareas:\n" +
-    m.tasks.map(t => "- " + t.task).join("\n")
-  );
-}
+  try {
+    const res = await fetch(`${API}/meeting/${id}`);
+    const meeting = await res.json();
 
-// -------------------
-// LOAD TASKS
-// -------------------
-async function loadTasks() {
-  const res = await fetch(`${API}/tasks`);
-  const tasks = await res.json();
+    if (!res.ok || meeting.error) {
+      throw new Error(meeting.error || "No se pudo cargar la reunión");
+    }
 
-  const container = document.getElementById("tasks");
-  container.innerHTML = "";
+    const topics = (meeting.topics || [])
+      .map((topic) => `<li>${escapeHtml(topic)}</li>`)
+      .join("");
 
-  tasks.forEach(t => {
-    const div = document.createElement("div");
+    const tasks = (meeting.tasks || [])
+      .map(
+        (task) => `
+          <li>
+            <strong>${escapeHtml(task.task || "")}</strong>
+            — ${escapeHtml(task.owner || "sin asignar")}
+            ${task.priority ? `(${escapeHtml(task.priority)})` : ""}
+          </li>
+        `
+      )
+      .join("");
 
-    div.innerHTML = `
-      ${t.task} (${t.owner})
+    container.innerHTML = `
+      <div class="detail-section">
+        <h3>Resumen</h3>
+        <p>${escapeHtml(meeting.summary || "Sin resumen disponible.")}</p>
+      </div>
+
+      <div class="detail-section">
+        <h3>Temas</h3>
+        ${
+          meeting.topics && meeting.topics.length
+            ? `<ul class="topic-list">${topics}</ul>`
+            : `<p class="empty-state">No hay temas detectados.</p>`
+        }
+      </div>
+
+      <div class="detail-section">
+        <h3>Tareas</h3>
+        ${
+          meeting.tasks && meeting.tasks.length
+            ? `<ul class="task-list">${tasks}</ul>`
+            : `<p class="empty-state">No hay tareas detectadas.</p>`
+        }
+      </div>
+
+      <div class="detail-section">
+        <h3>Transcript</h3>
+        <div class="transcript-box">${escapeHtml(meeting.transcript || "Sin transcript todavía.")}</div>
+      </div>
     `;
-
-    container.appendChild(div);
-  });
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<div class="empty-state">No se pudo cargar el detalle.</div>`;
+  }
 }
 
-// INIT
+async function loadTasks() {
+  const container = document.getElementById("tasks");
+  container.innerHTML = `<div class="empty-state">Cargando tareas...</div>`;
+
+  try {
+    const res = await fetch(`${API}/tasks`);
+    const tasks = await res.json();
+
+    container.innerHTML = "";
+
+    if (!tasks.length) {
+      container.innerHTML = `<div class="empty-state">No hay tareas todavía.</div>`;
+      return;
+    }
+
+    tasks.forEach((t) => {
+      const div = document.createElement("div");
+      div.className = "task-item";
+
+      div.innerHTML = `
+        <div class="item-title">${escapeHtml(t.task || "Tarea sin nombre")}</div>
+        <div class="item-subtitle">
+          Responsable: ${escapeHtml(t.owner || "sin asignar")}
+        </div>
+        <div class="badge">${escapeHtml(t.priority || "sin prioridad")}</div>
+      `;
+
+      container.appendChild(div);
+    });
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = `<div class="empty-state">No se pudieron cargar las tareas.</div>`;
+  }
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 loadMeetings();
 loadTasks();
