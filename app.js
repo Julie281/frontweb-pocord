@@ -76,12 +76,24 @@ async function loadMeetings() {
     meetings.forEach((m) => {
       const div = document.createElement("div");
       div.className = "meeting-item";
-      div.onclick = () => openMeeting(m.id);
 
       div.innerHTML = `
-        <div class="item-title">${escapeHtml(m.summary || "Sin resumen")}</div>
-        <div class="item-subtitle">ID: ${m.id}</div>
-        <div class="badge">Ver detalle</div>
+        <div class="meeting-top-row">
+          <div>
+            <div class="item-title">${escapeHtml(m.title || "Sin título")}</div>
+            <div class="item-subtitle">ID: ${m.id}</div>
+          </div>
+
+          <button class="danger-btn small-btn" onclick="deleteMeetingFromList('${m.id}')">
+            Borrar
+          </button>
+        </div>
+
+        <div class="meeting-actions">
+          <button class="ghost-btn small-btn" onclick="openMeeting('${m.id}')">
+            Ver detalle
+          </button>
+        </div>
       `;
 
       container.appendChild(div);
@@ -105,6 +117,7 @@ async function openMeeting(id) {
     }
 
     currentMeeting = meeting;
+    renderTasks(meeting.tasks || []);
     const topics = (meeting.topics || [])
       .map((topic) => `<li>${escapeHtml(topic)}</li>`)
       .join("");
@@ -157,38 +170,14 @@ async function openMeeting(id) {
 }
 
 async function loadTasks() {
-  const container = document.getElementById("tasks");
-  container.innerHTML = `<div class="empty-state">Cargando tareas...</div>`;
+ const container = document.getElementById("tasks");
 
-  try {
-    const res = await fetch(`${API}/tasks`);
-    const tasks = await res.json();
-
-    container.innerHTML = "";
-
-    if (!tasks.length) {
-      container.innerHTML = `<div class="empty-state">No hay tareas todavía.</div>`;
-      return;
-    }
-
-    tasks.forEach((t) => {
-      const div = document.createElement("div");
-      div.className = "task-item";
-
-      div.innerHTML = `
-        <div class="item-title">${escapeHtml(t.task || "Tarea sin nombre")}</div>
-        <div class="item-subtitle">
-          Responsable: ${escapeHtml(t.owner || "sin asignar")}
-        </div>
-        <div class="badge">${escapeHtml(t.priority || "sin prioridad")}</div>
-      `;
-
-      container.appendChild(div);
-    });
-  } catch (err) {
-    console.error(err);
-    container.innerHTML = `<div class="empty-state">No se pudieron cargar las tareas.</div>`;
+  if (!currentMeeting) {
+    container.innerHTML = `<div class="empty-state">Selecciona una reunión para ver sus tareas.</div>`;
+    return;
   }
+
+  renderTasks(currentMeeting.tasks || []);
 }
 
 function escapeHtml(text) {
@@ -260,4 +249,60 @@ ${transcript}`;
     console.error(err);
     showStatus("No se pudo copiar el detalle.", "error");
   }
+}
+
+async function deleteMeetingFromList(id) {
+  const confirmed = window.confirm("¿Seguro que quieres borrar esta reunión?");
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`${API}/meeting/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(data.error || "No se pudo borrar la reunión");
+    }
+
+    if (currentMeeting && currentMeeting.id === id) {
+      currentMeeting = null;
+      document.getElementById("meetingDetail").innerHTML =
+        `<div class="detail-empty">Selecciona una reunión para ver su resumen, transcript y tareas.</div>`;
+      document.getElementById("tasks").innerHTML =
+        `<div class="empty-state">Selecciona una reunión para ver sus tareas.</div>`;
+    }
+
+    await loadMeetings();
+    showStatus("Reunión borrada correctamente.", "success");
+  } catch (err) {
+    console.error(err);
+    showStatus(`Error: ${err.message}`, "error");
+  }
+}
+
+function renderTasks(tasks = []) {
+  const container = document.getElementById("tasks");
+  container.innerHTML = "";
+
+  if (!tasks.length) {
+    container.innerHTML = `<div class="empty-state">No hay tareas para esta reunión.</div>`;
+    return;
+  }
+
+  tasks.forEach((t) => {
+    const div = document.createElement("div");
+    div.className = "task-item";
+
+    div.innerHTML = `
+      <div class="item-title">${escapeHtml(t.task || "Tarea sin nombre")}</div>
+      <div class="item-subtitle">
+        Responsable: ${escapeHtml(t.owner || "sin asignar")}
+      </div>
+      <div class="badge">${escapeHtml(t.priority || "media")}</div>
+    `;
+
+    container.appendChild(div);
+  });
 }
